@@ -259,7 +259,9 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 		if sh.errorReportingLogName != "" && isError(entry) {
 			logName = sh.errorReportingLogName
 		}
-		jsonPayload, _ := json.Marshal(entry.Data)
+
+		_entry := entry.WithField("msg", entry.Message)
+		jsonPayload, _ := json.Marshal(_entry.Data)
 		_, err := sh.service.Write(&logging.WriteLogEntriesRequest{
 			LogName:        logName,
 			Resource:       sh.resource,
@@ -269,7 +271,7 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 				{
 					Severity:    severityString(entry.Level),
 					Timestamp:   entry.Time.Format(time.RFC3339),
-					TextPayload: entry.Message,
+					//TextPayload: entry.Message,
 					Labels:      labels,
 					HttpRequest: httpReq,
 					JsonPayload: jsonPayload,
