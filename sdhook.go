@@ -260,23 +260,25 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 			logName = sh.errorReportingLogName
 		}
 
+		_logEntry := &logging.LogEntry{
+			Severity: severityString(entry.Level),
+			Timestamp:   entry.Time.Format(time.RFC3339),
+			Labels:      labels,
+			HttpRequest: httpReq,
+		}
 		_entry := entry.WithField("msg", entry.Message)
-		jsonPayload, _ := json.Marshal(_entry.Data)
+		if jsonPayload, err := json.Marshal(_entry.Data); err == nil {
+			_logEntry.JsonPayload = jsonPayload
+		} else {
+			_logEntry.TextPayload = entry.Message
+		}
+
 		_, err := sh.service.Write(&logging.WriteLogEntriesRequest{
 			LogName:        logName,
 			Resource:       sh.resource,
 			Labels:         sh.labels,
 			PartialSuccess: sh.partialSuccess,
-			Entries: []*logging.LogEntry{
-				{
-					Severity:    severityString(entry.Level),
-					Timestamp:   entry.Time.Format(time.RFC3339),
-					//TextPayload: entry.Message,
-					Labels:      labels,
-					HttpRequest: httpReq,
-					JsonPayload: jsonPayload,
-				},
-			},
+			Entries: []*logging.LogEntry{_logEntry},
 		}).Do()
 		if err != nil {
 			log.Println("cannot deliver log entry:", err)
