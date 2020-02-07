@@ -260,17 +260,17 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 			logName = sh.errorReportingLogName
 		}
 
-		_logEntry := &logging.LogEntry{
+		logEntry := &logging.LogEntry{
 			Severity: severityString(entry.Level),
 			Timestamp:   entry.Time.Format(time.RFC3339),
-			Labels:      labels,
 			HttpRequest: httpReq,
 		}
-		_entry := entry.WithField("msg", entry.Message)
-		if jsonPayload, err := json.Marshal(_entry.Data); err == nil {
-			_logEntry.JsonPayload = jsonPayload
+		entryWithMessage := entry.WithField("msg", entry.Message)
+		if jsonPayload, err := json.Marshal(entryWithMessage.Data); err == nil {
+			logEntry.JsonPayload = jsonPayload
 		} else {
-			_logEntry.TextPayload = entry.Message
+			logEntry.TextPayload = entry.Message
+			logEntry.Labels = labels
 		}
 
 		_, err := sh.service.Write(&logging.WriteLogEntriesRequest{
@@ -278,7 +278,7 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 			Resource:       sh.resource,
 			Labels:         sh.labels,
 			PartialSuccess: sh.partialSuccess,
-			Entries: []*logging.LogEntry{_logEntry},
+			Entries: []*logging.LogEntry{logEntry},
 		}).Do()
 		if err != nil {
 			log.Println("cannot deliver log entry:", err)
@@ -328,6 +328,8 @@ func severityString(l logrus.Level) string {
 		return "critical"
 	case logrus.PanicLevel:
 		return "emergency"
+	case logrus.TraceLevel:
+		return "debug"
 	default:
 		return strings.ToUpper(l.String())
 	}
