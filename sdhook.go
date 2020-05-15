@@ -247,7 +247,7 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 	if sh.errorReportingServiceName != "" && isError(entry) {
 		errorEvent := sh.buildErrorReportingEvent(entry, labels, httpReq)
 		if sh != nil && sh.errorService != nil && sh.errorService.Projects != nil && sh.errorService.Projects.Events != nil {
-			_, err := sh.errorService.Projects.Events.Report(sh.projectID, &errorEvent).Do()
+			_, err := sh.errorService.Projects.Events.Report("projects/"+sh.projectID, &errorEvent).Do()
 			if err != nil {
 				log.Println("cannot report event:", err)
 			}
@@ -261,7 +261,7 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 		}
 
 		logEntry := &logging.LogEntry{
-			Severity: severityString(entry.Level),
+			Severity:    severityString(entry.Level),
 			Timestamp:   entry.Time.Format(time.RFC3339),
 			HttpRequest: httpReq,
 		}
@@ -278,7 +278,7 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 			Resource:       sh.resource,
 			Labels:         sh.labels,
 			PartialSuccess: sh.partialSuccess,
-			Entries: []*logging.LogEntry{logEntry},
+			Entries:        []*logging.LogEntry{logEntry},
 		}).Do()
 		if err != nil {
 			log.Println("cannot deliver log entry:", err)
