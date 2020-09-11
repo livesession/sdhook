@@ -1,4 +1,4 @@
-module github.com/thanapolr/sdhook
+module github.com/livesession/sdhook
 
 require (
 	cloud.google.com/go v0.57.0
