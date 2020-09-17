@@ -3,9 +3,11 @@
 package sdhook
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/api/trace"
 	"log"
 	"net/http"
 	"strconv"
@@ -260,10 +262,31 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 			logName = sh.errorReportingLogName
 		}
 
+		ctx := entry.Context
+
+		var span trace.Span
+
+		if ctx != nil {
+			span = trace.SpanFromContext(ctx)
+		} else {
+			span = trace.SpanFromContext(context.Background())
+		}
+
+		var traceID string
+		if span.SpanContext().TraceID.IsValid() {
+			traceID = fmt.Sprintf("projects/%s/traces/%s", sh.projectID, span.SpanContext().TraceID.String())
+		}
+		var spanID string
+		if span.SpanContext().SpanID.IsValid() {
+			spanID = span.SpanContext().SpanID.String()
+		}
+
 		logEntry := &logging.LogEntry{
 			Severity:    severityString(entry.Level),
 			Timestamp:   entry.Time.Format(time.RFC3339),
 			HttpRequest: httpReq,
+			SpanId:      spanID,
+			Trace:       traceID,
 		}
 		entryWithMessage := entry.WithField("msg", entry.Message)
 		if jsonPayload, err := json.Marshal(entryWithMessage.Data); err == nil {
