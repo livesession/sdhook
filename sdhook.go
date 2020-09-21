@@ -4,6 +4,7 @@ package sdhook
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -245,6 +246,14 @@ func (sh *StackdriverHook) sendLogMessageViaAgent(entry *logrus.Entry, labels ma
 	}
 }
 
+func HexToString(id string) string {
+	bs, err := hex.DecodeString(id)
+	if err != nil {
+		return ""
+	}
+	return string(bs)
+}
+
 func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[string]string, httpReq *logging.HttpRequest) {
 	if sh.errorReportingServiceName != "" && isError(entry) {
 		errorEvent := sh.buildErrorReportingEvent(entry, labels, httpReq)
@@ -274,7 +283,8 @@ func (sh *StackdriverHook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[
 
 		var traceID string
 		if span.SpanContext().TraceID.IsValid() {
-			traceID = fmt.Sprintf("projects/%s/traces/%s", sh.projectID, span.SpanContext().TraceID.String())
+			// TODO: what if we don't want parse to ascii
+			traceID = fmt.Sprintf("projects/%s/traces/%s", sh.projectID, HexToString(span.SpanContext().TraceID.String()))
 		}
 		var spanID string
 		if span.SpanContext().SpanID.IsValid() {
