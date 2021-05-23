@@ -8,13 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/otel/api/trace"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel/api/trace"
 
 	"github.com/facebookgo/stack"
 	"github.com/fluent/fluent-logger-golang/fluent"
@@ -145,9 +146,16 @@ func (sh *StackdriverHook) Levels() []logrus.Level {
 
 // Fire writes the message to the Stackdriver entry service.
 func (sh *StackdriverHook) Fire(entry *logrus.Entry) error {
+	ctx := entry.Context
+	// TODO: use const from logflag if repo goes public
+	if ctx != nil && ctx.Value("logflag_omit") != nil {
+		return nil
+	}
+
 	sh.waitGroup.Add(1)
 	go func(entry *logrus.Entry) {
 		defer sh.waitGroup.Done()
+
 		var httpReq *logging.HttpRequest
 
 		// convert entry data to labels
